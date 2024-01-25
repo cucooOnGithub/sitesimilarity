@@ -48,21 +48,28 @@ def get_web_page(url, debug=False, ignore_ssl_errors=True):
 
     # Check if the content is already in the cache
     if url in url_cache:
+        if debug:
+            print(f"Cache hit for: {url}")
         return url_cache[url]
 
     try:
-        response = requests.get(url, verify=not ignore_ssl_errors)
+        response = requests.get(url, verify=not ignore_ssl_errors, timeout=3)
         response.raise_for_status()
         content = response.text
-
+        if debug:
+            print(f"Cache hit for: {url}")
+        
         # Store the content in the cache
         url_cache[url] = content
 
         return content
     except:
         # Log or handle the error silently
-        url_cache[url] = ""
-        return ''
+        if debug:
+            print(f"Failed get page for: {url}")
+
+        url_cache[url] = None
+        return None
 
 def calculate_similarity(text1, text2, threshold=0.9):
     levenshtein_distance = Levenshtein.distance(text1, text2)
@@ -72,9 +79,23 @@ def calculate_similarity(text1, text2, threshold=0.9):
     return similarity_ratio >= threshold
 
 def compare_urls(url1, url2, threshold, executor, debug=False):
-    content1 = get_web_page(url1, debug=debug)
-    content2 = get_web_page(url2, debug=debug)
-
+    # Check if the content is already in the cache
+    if url1 in url_cache:
+        if debug:
+            print(f"Cache hit for: {url1}")
+        
+        content1 = url_cache[url1]
+    else:
+        content1 = get_web_page(url1, debug=debug)
+    
+    if url2 in url_cache:
+        if debug:
+            print(f"Cache hit for: {url2}")
+        
+        content2 = url_cache[url2]
+    else:
+        content2 = get_web_page(url2, debug=debug)
+            
     if content1 is not None and content2 is not None:
         is_similar = calculate_similarity(content1, content2, threshold)
         if is_similar:
